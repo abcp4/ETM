@@ -5,7 +5,7 @@ import random
 from scipy import sparse
 import itertools
 from scipy.io import savemat, loadmat
-
+import os
 # Maximum / minimum document frequency
 max_df = 0.7
 min_df = 100  # choose desired value for min_df
@@ -16,7 +16,7 @@ with open('stops.txt', 'r') as f:
 
 # Read data
 print('reading text file...')
-data_file = 'raw/new_york_times_text/nyt_docs.txt'
+data_file = '/content/biologicas.txt'
 with open(data_file, 'r') as f:
     docs = f.readlines()
 
@@ -172,7 +172,7 @@ del doc_indices_va
 path_save = './min_df_' + str(min_df) + '/'
 if not os.path.isdir(path_save):
     os.system('mkdir -p ' + path_save)
-
+print('vocab:',vocab)
 with open(path_save + 'vocab.pkl', 'wb') as f:
     pickle.dump(vocab, f)
 del vocab
