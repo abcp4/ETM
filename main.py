@@ -98,9 +98,24 @@ test_2_counts = test['counts_2']
 args.num_docs_test_2 = len(test_2_tokens)
 
 embeddings = None
-from gensim.models import Word2Vec
-model = Word2Vec.load("/content/word2vec/w2v_10eps_model.model")
-vectors=model.wv
+
+#from gensim.models import Word2Vec
+#model = Word2Vec.load("/content/word2vec/w2v_10eps_model.model")
+#vectors=model.wv
+
+from sentence_transformers import SentenceTransformer
+from sentence_transformers import models, losses
+import scipy.spatial
+import pickle as pkl
+word_embedding_model = models.BERT("/content/models")
+# Apply mean pooling to get one fixed sized sentence vector
+pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
+                               pooling_mode_mean_tokens=True,pooling_mode_cls_token=False,
+                               pooling_mode_max_tokens=False)
+model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+import pandas as pd
+from tqdm import tqdm
+
 #if not args.train_embeddings:
 print('loaded embeddings')
 emb_path = args.emb_path
@@ -118,9 +133,25 @@ with open(emb_path, 'rb') as f:
 embeddings = np.zeros((vocab_size, args.emb_size))
 words_found = 0
 errors=0
+
+data_embs=[]
+batch=[]
 for i, word in enumerate(vocab):
-    try: 
-        embeddings[i] = vectors[word]
+  batch.append(word)
+  if(i%500==0):
+      print(i)
+      embs=model.encode(batch,show_progress_bar=False)
+      for e in embs:
+        data_embs.append(e)
+      batch=[]
+embs=model.encode(batch,show_progress_bar=False)
+for e in embs:
+  data_embs.append(e)
+      
+for i, word in enumerate(vocab):
+    try:
+        embeddings[i] = data_embs[i]
+        #embeddings[i] = vectors[word]
         words_found += 1
     except KeyError:
         errors+=1
@@ -131,7 +162,7 @@ vectors=[]
 model=[]
 print('errors: ',errors)
 print('words_found: ',words_found)
-
+a=2/0
 print('=*'*100)
 print('Training an Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
 print('=*'*100)
