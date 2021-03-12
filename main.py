@@ -147,7 +147,12 @@ for i, word in enumerate(vocab):
 embs=model.encode(batch,show_progress_bar=False)
 for e in embs:
   data_embs.append(e)
-      
+import numpy as np
+from sklearn.decomposition import PCA
+pca = PCA(n_components=300)
+data_embs=pca.fit_transform(data_embs)
+print(pca.explained_variance_ratio_.cumsum())
+  
 for i, word in enumerate(vocab):
     try:
         embeddings[i] = data_embs[i]
@@ -162,7 +167,7 @@ vectors=[]
 model=[]
 print('errors: ',errors)
 print('words_found: ',words_found)
-a=2/0
+
 print('=*'*100)
 print('Training an Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
 print('=*'*100)
