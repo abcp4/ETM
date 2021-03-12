@@ -98,27 +98,39 @@ test_2_counts = test['counts_2']
 args.num_docs_test_2 = len(test_2_tokens)
 
 embeddings = None
-if not args.train_embeddings:
-    emb_path = args.emb_path
-    vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
-    vectors = {}
-    with open(emb_path, 'rb') as f:
-        for l in f:
-            line = l.decode().split()
-            word = line[0]
-            if word in vocab:
-                vect = np.array(line[1:]).astype(np.float)
-                vectors[word] = vect
-    embeddings = np.zeros((vocab_size, args.emb_size))
-    words_found = 0
-    for i, word in enumerate(vocab):
-        try: 
-            embeddings[i] = vectors[word]
-            words_found += 1
-        except KeyError:
-            embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
-    embeddings = torch.from_numpy(embeddings).to(device)
-    args.embeddings_dim = embeddings.size()
+from gensim.models import Word2Vec
+model = Word2Vec.load("/content/word2vec/w2v_10eps_model.model")
+vectors=model.wv
+#if not args.train_embeddings:
+print('loaded embeddings')
+emb_path = args.emb_path
+'''
+vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.txt')   
+vectors = {}
+with open(emb_path, 'rb') as f:
+    for l in f:
+        line = l.decode().split()
+        word = line[0]
+        if word in vocab:
+            vect = np.array(line[1:]).astype(np.float)
+            vectors[word] = vect
+'''
+embeddings = np.zeros((vocab_size, args.emb_size))
+words_found = 0
+errors=0
+for i, word in enumerate(vocab):
+    try: 
+        embeddings[i] = vectors[word]
+        words_found += 1
+    except KeyError:
+        errors+=1
+        embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
+embeddings = torch.from_numpy(embeddings).to(device)
+args.embeddings_dim = embeddings.size()
+vectors=[]
+model=[]
+print('errors: ',errors)
+print('words_found: ',words_found)
 
 print('=*'*100)
 print('Training an Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
