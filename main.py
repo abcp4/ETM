@@ -97,7 +97,7 @@ test_2_tokens = test['tokens_2']
 test_2_counts = test['counts_2']
 args.num_docs_test_2 = len(test_2_tokens)
 
-emb_type = 'w2v' #bert
+emb_type = 'none' #bert
 embeddings = None
 
 if(emb_type=='w2v'):
@@ -120,7 +120,6 @@ import pandas as pd
 from tqdm import tqdm
 
 #if not args.train_embeddings:
-print('loaded embeddings')
 emb_path = args.emb_path
 
 embeddings = np.zeros((vocab_size, args.emb_size))
@@ -143,32 +142,32 @@ if(emb_type=='bert'):
   for e in embs:
     data_embs.append(e)
 
-elif(emb_type=='bert'):
+if(emb_type=='bert'):
   import numpy as np
   from sklearn.decomposition import PCA
   pca = PCA(n_components=300)
   data_embs=pca.fit_transform(data_embs)
   print(pca.explained_variance_ratio_.cumsum())
   
+if(emb_type=='w2v' or emb_type=='bert'):
+  for i, word in enumerate(vocab):
+      try:
+        if(emb_type=='w2v'):
+          embeddings[i] = vectors[word]
+        elif(emb_type=='bert'):
+          embeddings[i] = data_embs[i]
+        words_found += 1
+      except KeyError:
+          errors+=1
+          embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
 
-for i, word in enumerate(vocab):
-    try:
-      if(emb_type=='w2v'):
-        embeddings[i] = vectors[word]
-      elif(emb_type=='bert'):
-        embeddings[i] = data_embs[i]
-      words_found += 1
-    except KeyError:
-        errors+=1
-        embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
 
-
-embeddings = torch.from_numpy(embeddings).to(device)
-args.embeddings_dim = embeddings.size()
-vectors=[]
-model=[]
-print('errors: ',errors)
-print('words_found: ',words_found)
+  embeddings = torch.from_numpy(embeddings).to(device)
+  args.embeddings_dim = embeddings.size()
+  vectors=[]
+  model=[]
+  print('errors: ',errors)
+  print('words_found: ',words_found)
 
 print('=*'*100)
 print('Training an Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
