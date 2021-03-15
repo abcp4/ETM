@@ -97,70 +97,72 @@ test_2_tokens = test['tokens_2']
 test_2_counts = test['counts_2']
 args.num_docs_test_2 = len(test_2_tokens)
 
+emb_type = 'w2v' #bert
 embeddings = None
 
-#from gensim.models import Word2Vec
-#model = Word2Vec.load("/content/word2vec/w2v_10eps_model.model")
-#vectors=model.wv
-
-from sentence_transformers import SentenceTransformer
-from sentence_transformers import models, losses
-import scipy.spatial
-import pickle as pkl
-word_embedding_model = models.BERT("/content/models")
-# Apply mean pooling to get one fixed sized sentence vector
-pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
-                               pooling_mode_mean_tokens=True,pooling_mode_cls_token=False,
-                               pooling_mode_max_tokens=False)
-model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+if(emb_type=='w2v'):
+  from gensim.models import Word2Vec
+  model = Word2Vec.load("/content/word2vec/w2v_10eps_model.model")
+  vectors=model.wv
+  print('loaded')
+elif(emb_type=='bert'):
+  from sentence_transformers import SentenceTransformer
+  from sentence_transformers import models, losses
+  import scipy.spatial
+  import pickle as pkl
+  word_embedding_model = models.BERT("/content/models")
+  # Apply mean pooling to get one fixed sized sentence vector
+  pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
+                                pooling_mode_mean_tokens=True,pooling_mode_cls_token=False,
+                                pooling_mode_max_tokens=False)
+  model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 import pandas as pd
 from tqdm import tqdm
 
 #if not args.train_embeddings:
 print('loaded embeddings')
 emb_path = args.emb_path
-'''
-vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.txt')   
-vectors = {}
-with open(emb_path, 'rb') as f:
-    for l in f:
-        line = l.decode().split()
-        word = line[0]
-        if word in vocab:
-            vect = np.array(line[1:]).astype(np.float)
-            vectors[word] = vect
-'''
+
 embeddings = np.zeros((vocab_size, args.emb_size))
+
 words_found = 0
 errors=0
 
-data_embs=[]
-batch=[]
-for i, word in enumerate(vocab):
-  batch.append(word)
-  if(i%500==0):
-      print(i)
-      embs=model.encode(batch,show_progress_bar=False)
-      for e in embs:
-        data_embs.append(e)
-      batch=[]
-embs=model.encode(batch,show_progress_bar=False)
-for e in embs:
-  data_embs.append(e)
-import numpy as np
-from sklearn.decomposition import PCA
-pca = PCA(n_components=300)
-data_embs=pca.fit_transform(data_embs)
-print(pca.explained_variance_ratio_.cumsum())
+if(emb_type=='bert'):
+  data_embs=[]
+  batch=[]
+  for i, word in enumerate(vocab):
+    batch.append(word)
+    if(i%500==0):
+        print(i)
+        embs=model.encode(batch,show_progress_bar=False)
+        for e in embs:
+          data_embs.append(e)
+        batch=[]
+  embs=model.encode(batch,show_progress_bar=False)
+  for e in embs:
+    data_embs.append(e)
+
+elif(emb_type=='bert'):
+  import numpy as np
+  from sklearn.decomposition import PCA
+  pca = PCA(n_components=300)
+  data_embs=pca.fit_transform(data_embs)
+  print(pca.explained_variance_ratio_.cumsum())
   
+
 for i, word in enumerate(vocab):
     try:
+      if(emb_type=='w2v'):
+        embeddings[i] = vectors[word]
+      elif(emb_type=='bert'):
         embeddings[i] = data_embs[i]
-        #embeddings[i] = vectors[word]
-        words_found += 1
+      words_found += 1
     except KeyError:
         errors+=1
         embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
+
+
 embeddings = torch.from_numpy(embeddings).to(device)
 args.embeddings_dim = embeddings.size()
 vectors=[]
